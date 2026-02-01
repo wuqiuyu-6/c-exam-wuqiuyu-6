@@ -1,0 +1,62 @@
+#include "../include/queue.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+static int tests_passed = 0;
+static int tests_failed = 0;
+
+#define TEST_ASSERT_EQUAL(expected, actual, line) \
+    do { \
+        if ((expected) == (actual)) { \
+            tests_passed++; \
+            printf("  [PASS] %s:%d\n", __FILE__, line); \
+        } else { \
+            tests_failed++; \
+            printf("  [FAIL] %s:%d: expected %d, got %d\n", __FILE__, line, (expected), (actual)); \
+        } \
+    } while(0)
+
+#define TEST_ASSERT_TRUE(condition, line) \
+    do { \
+        if (condition) { \
+            tests_passed++; \
+            printf("  [PASS] %s:%d\n", __FILE__, line); \
+        } else { \
+            tests_failed++; \
+            printf("  [FAIL] %s:%d: expected true, got false\n", __FILE__, line); \
+        } \
+    } while(0)
+
+#define TEST_ASSERT_FALSE(condition, line) \
+    do { \
+        if (!(condition)) { \
+            tests_passed++; \
+            printf("  [PASS] %s:%d\n", __FILE__, line); \
+        } else { \
+            tests_failed++; \
+            printf("  [FAIL] %s:%d: expected false, got true\n", __FILE__, line); \
+        } \
+    } while(0)
+
+int main(void) {
+    printf("========================================\n");
+    printf("   Test 2: Is Empty\n");
+    printf("========================================\n\n");
+
+    Queue* q = queue_create(0);
+    TEST_ASSERT_TRUE(queue_is_empty(q), __LINE__);
+
+    queue_enqueue(q, 10);
+    TEST_ASSERT_FALSE(queue_is_empty(q), __LINE__);
+
+    queue_dequeue(q, NULL);
+    TEST_ASSERT_TRUE(queue_is_empty(q), __LINE__);
+
+    queue_destroy(&q);
+
+    printf("\n========================================\n");
+    printf("   Results: %d passed, %d failed\n", tests_passed, tests_failed);
+    printf("========================================\n");
+
+    return tests_failed > 0 ? 1 : 0;
+}

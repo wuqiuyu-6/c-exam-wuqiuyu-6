@@ -1,0 +1,118 @@
+name: Autograding Tests
+'on': {}
+permissions:
+  checks: write
+  actions: read
+  contents: read
+jobs:
+  run-autograding-tests:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-classroom[bot]'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Create and Destroy
+      id: create-and-destroy
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Create and Destroy
+        setup-command: cmake -B build -S . && cmake --build build --parallel
+        command: ctest --test-dir build --output-on-failure -R test_01_create_destroy
+        timeout: 1
+        max-score: 10
+    - name: Is Empty
+      id: is-empty
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Is Empty
+        setup-command: cmake -B build -S . && cmake --build build --parallel
+        command: ctest --test-dir build --output-on-failure -R test_02_is_empty
+        timeout: 1
+        max-score: 10
+    - name: Enqueue Dequeue
+      id: enqueue-dequeue
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Enqueue Dequeue
+        setup-command: cmake -B build -S . && cmake --build build --parallel
+        command: ctest --test-dir build --output-on-failure -R test_03_enqueue_dequeue
+        timeout: 1
+        max-score: 10
+    - name: Front
+      id: front
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Front
+        setup-command: cmake -B build -S . && cmake --build build --parallel
+        command: ctest --test-dir build --output-on-failure -R test_04_front
+        timeout: 1
+        max-score: 10
+    - name: Back
+      id: back
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Back
+        setup-command: cmake -B build -S . && cmake --build build --parallel
+        command: ctest --test-dir build --output-on-failure -R test_05_back
+        timeout: 1
+        max-score: 10
+    - name: Size
+      id: size
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Size
+        setup-command: cmake -B build -S . && cmake --build build --parallel
+        command: ctest --test-dir build --output-on-failure -R test_06_size
+        timeout: 1
+        max-score: 10
+    - name: Clear
+      id: clear
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Clear
+        setup-command: cmake -B build -S . && cmake --build build --parallel
+        command: ctest --test-dir build --output-on-failure -R test_07_clear
+        timeout: 1
+        max-score: 10
+    - name: Dequeue Value
+      id: dequeue-value
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Dequeue Value
+        setup-command: cmake -B build -S . && cmake --build build --parallel
+        command: ctest --test-dir build --output-on-failure -R test_08_dequeue_value
+        timeout: 1
+        max-score: 10
+    - name: Unlimited Capacity
+      id: unlimited-capacity
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Unlimited Capacity
+        setup-command: cmake -B build -S . && cmake --build build --parallel
+        command: ctest --test-dir build --output-on-failure -R test_09_unlimited_capacity
+        timeout: 1
+        max-score: 10
+    - name: FIFO Order
+      id: fifo-order
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: FIFO Order
+        setup-command: cmake -B build -S . && cmake --build build --parallel
+        command: ctest --test-dir build --output-on-failure -R test_10_fifo_order
+        timeout: 1
+        max-score: 10
+    - name: Autograding Reporter
+      uses: classroom-resources/autograding-grading-reporter@v1
+      env:
+        CREATE-AND-DESTROY_RESULTS: "${{steps.create-and-destroy.outputs.result}}"
+        IS-EMPTY_RESULTS: "${{steps.is-empty.outputs.result}}"
+        ENQUEUE-DEQUEUE_RESULTS: "${{steps.enqueue-dequeue.outputs.result}}"
+        FRONT_RESULTS: "${{steps.front.outputs.result}}"
+        BACK_RESULTS: "${{steps.back.outputs.result}}"
+        SIZE_RESULTS: "${{steps.size.outputs.result}}"
+        CLEAR_RESULTS: "${{steps.clear.outputs.result}}"
+        DEQUEUE-VALUE_RESULTS: "${{steps.dequeue-value.outputs.result}}"
+        UNLIMITED-CAPACITY_RESULTS: "${{steps.unlimited-capacity.outputs.result}}"
+        FIFO-ORDER_RESULTS: "${{steps.fifo-order.outputs.result}}"
+      with:
+        runners: create-and-destroy,is-empty,enqueue-dequeue,front,back,size,clear,dequeue-value,unlimited-capacity,fifo-order

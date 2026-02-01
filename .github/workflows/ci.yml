@@ -1,0 +1,171 @@
+name: C Assignment CI
+
+on: [push, pull_request]
+
+jobs:
+  # ========== 阶段 1：基础编译与测试（所有平台） ==========
+  build-and-test:
+    name: Build & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+            generator: "Unix Makefiles"
+          - os: macos-latest
+            cc: clang
+            cxx: clang++
+            generator: "Unix Makefiles"
+          - os: windows-latest
+            cc: gcc
+            cxx: g++
+            generator: "MinGW Makefiles" # Windows 使用 MinGW
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: "3.20"
+
+      # Linux 特定：安装 valgrind
+      - name: Install Valgrind (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y valgrind
+
+      # Windows 特定：安装 MinGW-w64 (GCC)
+      - name: Setup MinGW (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-make
+
+      # 确保 MinGW 在 PATH 中（MSYS2 会自动处理，但保险起见）
+      - name: Add MinGW to PATH (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
+
+      # 配置阶段（所有平台统一逻辑）
+      - name: Configure CMake
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            # Windows: 使用 MinGW Makefiles，需要指定完整路径避免冲突
+            cmake -B build -S . -G "${{ matrix.generator }}" \
+              -DCMAKE_C_COMPILER=${{ matrix.cc }} \
+              -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+              -DCMAKE_C_FLAGS="-Wall -Wextra -Wpedantic -Werror" \
+              -DCMAKE_BUILD_TYPE=Debug
+          else
+            cmake -B build -S . -G "${{ matrix.generator }}" \
+              -DCMAKE_C_COMPILER=${{ matrix.cc }} \
+              -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+              -DCMAKE_C_FLAGS="-Wall -Wextra -Wpedantic -Werror" \
+              -DCMAKE_BUILD_TYPE=Debug
+          fi
+
+      # 构建阶段
+      - name: Build
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            # Windows MinGW 使用 MinGW Makefiles 时不需要 --config，但需要指定编译器
+            cmake --build build --parallel
+          else
+            cmake --build build --parallel
+          fi
+
+      # 测试阶段
+      - name: Test
+        working-directory: build
+        shell: bash
+        run: ctest --output-on-failure --verbose
+
+      # 内存泄漏检测（仅 Linux）
+      - name: Memory Check (Valgrind)
+        if: runner.os == 'Linux'
+        working-directory: build
+        run: |
+          if [ -f "./test_runner" ]; then
+            valgrind --leak-check=full --error-exitcode=1 ./test_runner
+          elif [ -f "./CAssignment" ]; then
+            valgrind --leak-check=full --error-exitcode=1 ./CAssignment
+          fi
+
+  # ========== 阶段 2 & 3 保持不变 ==========
+  lint:
+    name: Code Style Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get install -y clang-format
+
+      - name: Check Formatting
+        run: |
+          find src include \( -name "*.c" -o -name "*.h" \) -exec clang-format --dry-run --Werror {} + 2>&1 || true
+          # 注意：上面加了 || true 避免没文件时报错，或者你可以：
+          # find src include \( -name "*.c" -o -name "*.h" \) | xargs -r clang-format --dry-run --Werror
+
+      - name: Generate clang-format if missing
+        if: failure()
+        run: |
+          if [ ! -f .clang-format ]; then
+            echo "提示：检测到代码风格问题。运行以下命令修复："
+            echo "clang-format -i src/*.c include/*.h"
+          fi
+
+  submission-check:
+    name: Submission Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for Build Artifacts
+        run: |
+          if [ -d "build" ]; then
+            echo "::error::错误：提交中包含 build/ 目录！请删除后重新提交："
+            echo "  git rm -rf build/"
+            echo "  git commit -m 'Remove build directory'"
+            exit 1
+          fi
+
+      - name: Check for Binaries
+        run: |
+          if find . \( -name "*.exe" -o -name "*.o" -o -name "*.obj" -o -name "*.a" -o -name "*.so" -o -name "*.dll" \) | grep -q .; then
+            echo "::error::错误：提交中包含编译产物！请清理后提交。"
+            exit 1
+          fi
+
+          if [ -f "./CAssignment" ] || [ -f "./test_runner" ] || [ -f "./main" ]; then
+            echo "::error::错误：提交中包含可执行文件！"
+            exit 1
+          fi
+
+      - name: Check Documentation
+        run: |
+          if [ ! -f "README.md" ]; then
+            echo "::warning::警告：缺少 README.md 文件"
+          fi
+
+      - name: Check File Sizes
+        run: |
+          max_size=1048576  # 1MB
+          large_files=$(find . -path ./.git -prune -o -type f -size +${max_size}c -print 2>/dev/null | grep -v "^./.git" || true)
+          if [ ! -z "$large_files" ]; then
+            echo "::error::错误：以下文件超过 1MB："
+            echo "$large_files"
+            exit 1
+          fi
