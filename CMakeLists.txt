@@ -86,3 +86,4 @@ add_test(NAME test_09_unlimited_capacity COMMAND test_09_unlimited_capacity)
 add_executable(test_10_fifo_order test/test_10_fifo_order.c src/queue.c)
 target_include_directories(test_10_fifo_order PRIVATE ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME test_10_fifo_order COMMAND test_10_fifo_order)
+
