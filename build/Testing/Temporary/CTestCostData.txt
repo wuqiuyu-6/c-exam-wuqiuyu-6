@@ -1,0 +1,11 @@
+test_01_create_destroy 1 0.0108954
+test_02_is_empty 1 0.0080707
+test_03_enqueue_dequeue 1 0.0075913
+test_04_front 1 0.0081977
+test_05_back 1 0.0088024
+test_06_size 1 0.0076414
+test_07_clear 1 0.0069241
+test_08_dequeue_value 1 0.0069971
+test_09_unlimited_capacity 1 0.0105406
+test_10_fifo_order 1 0.0078031
+---
